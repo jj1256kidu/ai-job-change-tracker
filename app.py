@@ -1,24 +1,26 @@
 import os
 import sys
 import logging
-import json
-import time
+import pandas as pd
 from datetime import datetime, timezone
 from typing import List, Dict, Optional
-from pathlib import Path
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import time
+import streamlit as st
 from dotenv import load_dotenv
-from tqdm import tqdm
-import pandas as pd
-from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn
+import json
+import re
+from pathlib import Path
+import plotly.express as px
+from scraper import LinkedInScraper
 
 # Load environment variables
 load_dotenv()
@@ -28,19 +30,45 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('scraper.log'),
+        logging.FileHandler('app.log'),
         logging.StreamHandler(sys.stdout)
     ]
 )
 logger = logging.getLogger(__name__)
 
-# Initialize rich console
-console = Console()
-
 # Database setup
 DATABASE_URL = os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/job_changes')
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+# Database Models
+class JobChange(Base):
+    __tablename__ = "job_changes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String)
+    company = Column(String)
+    old_position = Column(String)
+    new_position = Column(String)
+    change_date = Column(DateTime)
+    profile_url = Column(String)
+    is_new = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, unique=True)
+    linkedin_url = Column(String)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+# Create tables
+Base.metadata.create_all(bind=engine)
 
 # Scraping Configuration
 MAX_RESULTS_PER_COMPANY = int(os.getenv('MAX_RESULTS_PER_COMPANY', '100'))
@@ -149,6 +177,15 @@ class LinkedInScraper:
         if self.driver:
             self.driver.quit()
 
+# Database Operations
+def get_db():
+    """Get database session"""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 def save_job_changes(changes: List[Dict]):
     """Save job changes to database"""
     db = SessionLocal()
@@ -181,100 +218,137 @@ def save_job_changes(changes: List[Dict]):
     finally:
         db.close()
 
-def process_changes(employees: List[Dict]) -> List[Dict]:
-    """Process employee data to identify changes"""
-    changes = []
-    db = SessionLocal()
+# Page configuration
+st.set_page_config(
+    page_title="LinkedIn Job Change Tracker",
+    page_icon="👨‍💼",
+    layout="wide"
+)
+
+# Custom CSS
+st.markdown("""
+    <style>
+    .main {
+        padding: 2rem;
+    }
+    .stButton>button {
+        width: 100%;
+        margin-top: 1rem;
+    }
+    .stTextInput>div>div>input {
+        background-color: #f0f2f6;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
+def initialize_session_state():
+    """Initialize session state variables"""
+    if 'scraping_results' not in st.session_state:
+        st.session_state.scraping_results = []
+    if 'is_scraping' not in st.session_state:
+        st.session_state.is_scraping = False
+
+def scrape_companies(companies):
+    """Run the scraper for given companies"""
     try:
-        for employee in employees:
-            existing = db.query(JobChange).filter(
-                JobChange.name == employee["name"],
-                JobChange.company == employee["company"],
-                JobChange.profile_url == employee["profile_url"]
-            ).first()
-            
-            if existing:
-                if existing.new_position != employee["position"]:
-                    changes.append({
-                        "name": employee["name"],
-                        "company": employee["company"],
-                        "old_position": existing.new_position,
-                        "new_position": employee["position"],
-                        "change_date": datetime.now(timezone.utc),
-                        "profile_url": employee["profile_url"]
-                    })
-            else:
-                changes.append({
-                    "name": employee["name"],
-                    "company": employee["company"],
-                    "old_position": None,
-                    "new_position": employee["position"],
-                    "change_date": datetime.now(timezone.utc),
-                    "profile_url": employee["profile_url"]
-                })
-    finally:
-        db.close()
-    return changes
+        scraper = LinkedInScraper(
+            headless=True,
+            max_results=50,
+            scraping_delay=2.0
+        )
+        results = scraper.scrape_multiple_companies(companies)
+        return results
+    except Exception as e:
+        st.error(f"Error during scraping: {str(e)}")
+        return []
+
+def display_results(results):
+    """Display scraping results in a table and charts"""
+    if not results:
+        st.warning("No results found.")
+        return
+
+    # Convert results to DataFrame
+    df = pd.DataFrame(results)
+    
+    # Display summary metrics
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Employees", len(df))
+    with col2:
+        st.metric("Unique Companies", df['company'].nunique())
+    with col3:
+        st.metric("Latest Update", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"))
+
+    # Display data table
+    st.subheader("Employee Data")
+    st.dataframe(df)
+
+    # Visualizations
+    st.subheader("Analytics")
+    
+    # Company distribution
+    fig1 = px.pie(df, names='company', title='Employee Distribution by Company')
+    st.plotly_chart(fig1, use_container_width=True)
+
+    # Position distribution
+    fig2 = px.bar(df['position'].value_counts().head(10), 
+                  title='Top 10 Positions')
+    st.plotly_chart(fig2, use_container_width=True)
 
 def main():
-    """Main scraping function"""
-    console.print("[bold blue]Starting LinkedIn Job Change Scraper[/bold blue]")
+    st.title("👨‍💼 LinkedIn Job Change Tracker")
     
-    if not COMPANIES_TO_TRACK:
-        console.print("[red]No companies configured for tracking. Please update COMPANIES_TO_TRACK in .env file[/red]")
-        return
+    # Initialize session state
+    initialize_session_state()
     
-    scraper = LinkedInScraper()
-    try:
-        # Login to LinkedIn
-        console.print("[yellow]Logging in to LinkedIn...[/yellow]")
-        scraper.login()
+    # Sidebar for company input
+    with st.sidebar:
+        st.header("Add Companies")
+        company_name = st.text_input("Company Name")
+        company_url = st.text_input("LinkedIn Company URL")
         
-        # Create progress bar
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            console=console
-        ) as progress:
-            # Create main task
-            main_task = progress.add_task(
-                "[cyan]Scraping companies...",
-                total=len(COMPANIES_TO_TRACK)
-            )
-            
-            total_changes = 0
-            for company in COMPANIES_TO_TRACK:
-                company_name = company['name']
-                company_url = company['url']
-                
-                # Update progress description
-                progress.update(main_task, description=f"[cyan]Scraping {company_name}...")
-                
-                # Scrape company
-                employees = scraper.scrape_company(company_name, company_url)
-                
-                # Process changes
-                changes = process_changes(employees)
-                
-                # Save changes
-                if changes:
-                    save_job_changes(changes)
-                    total_changes += len(changes)
-                
-                # Update progress
-                progress.update(main_task, advance=1)
+        if st.button("Add Company"):
+            if company_name and company_url:
+                if 'companies' not in st.session_state:
+                    st.session_state.companies = []
+                st.session_state.companies.append({
+                    "name": company_name,
+                    "url": company_url
+                })
+                st.success(f"Added {company_name}")
+                st.experimental_rerun()
+            else:
+                st.error("Please fill in both fields")
+
+    # Display added companies
+    if 'companies' in st.session_state and st.session_state.companies:
+        st.subheader("Companies to Track")
+        companies_df = pd.DataFrame(st.session_state.companies)
+        st.dataframe(companies_df)
         
-        # Print summary
-        console.print(f"\n[green]Scraping completed successfully![/green]")
-        console.print(f"[blue]Total changes found: {total_changes}[/blue]")
-        
-    except Exception as e:
-        console.print(f"[red]Error during scraping: {str(e)}[/red]")
-        logger.error(f"Scraping error: {str(e)}")
-    finally:
-        scraper.close()
+        if st.button("Start Scraping"):
+            with st.spinner("Scraping in progress..."):
+                st.session_state.is_scraping = True
+                results = scrape_companies(st.session_state.companies)
+                st.session_state.scraping_results = results
+                st.session_state.is_scraping = False
+                st.success("Scraping completed!")
+                st.experimental_rerun()
+
+    # Display results if available
+    if st.session_state.scraping_results:
+        display_results(st.session_state.scraping_results)
+
+    # Footer
+    st.markdown("---")
+    st.markdown("""
+        <div style='text-align: center'>
+            <p>Built with ❤️ using Streamlit</p>
+            <p>Last updated: {}</p>
+        </div>
+    """.format(datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")), 
+    unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main() 

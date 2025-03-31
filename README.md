@@ -1,130 +1,76 @@
-# AI Job Change Tracker
+# LinkedIn Job Change Tracker
 
-A Streamlit application that tracks professionals who have recently changed jobs by scraping LinkedIn-related job change data from public Google search results.
+A Streamlit application that tracks job changes by scraping LinkedIn company pages. The application provides a user-friendly interface to monitor employee movements across different companies.
 
 ## Features
 
-- 🔍 Automated scraping of job changes from Google search results
-- 📊 Interactive dashboard with real-time analytics
-- 📈 Visualizations using Plotly
-- 🔄 Daily automated updates via GitHub Actions
-- 🗄️ PostgreSQL database for data storage
-- 🎨 Modern UI with Streamlit
-
-## Tech Stack
-
-- **Frontend**: Streamlit, Plotly
-- **Backend**: Python, FastAPI
-- **Database**: PostgreSQL
-- **Scraping**: Selenium, BeautifulSoup4
-- **Deployment**: Streamlit Cloud
+- LinkedIn company page scraping
+- Real-time data visualization
+- Interactive data tables
+- Company and position analytics
+- User-friendly interface
 
 ## Prerequisites
 
 - Python 3.9+
-- PostgreSQL
-- Chrome/Chromium (for Selenium)
-- Git
+- Chrome browser
+- LinkedIn account
+- PostgreSQL database (optional)
 
-## Setup
+## Installation
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/ai-job-change-tracker.git
-   cd ai-job-change-tracker
-   ```
+```bash
+git clone https://github.com/yourusername/linkedin-job-tracker.git
+cd linkedin-job-tracker
+```
 
 2. Create and activate a virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
 
 3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+```bash
+pip install -r requirements.txt
+```
 
-4. Set up the database:
-   ```bash
-   psql -U postgres -f init_db.sql
-   ```
+4. Create a `.env` file in the root directory with the following variables:
+```env
+LINKEDIN_USERNAME=your_username
+LINKEDIN_PASSWORD=your_password
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+MAX_RESULTS_PER_COMPANY=100
+SCRAPING_DELAY=2.0
+```
 
-5. Create a `.env` file:
-   ```bash
-   cp .env.example .env
-   ```
-   Then edit `.env` with your database credentials.
+## Usage
 
-6. Install Chrome WebDriver:
-   ```bash
-   python install_dependencies.py
-   ```
+1. Run the Streamlit application:
+```bash
+streamlit run app.py
+```
 
-## Running the Application
+2. Open your browser and navigate to `http://localhost:8501`
 
-1. Start the Streamlit app:
-   ```bash
-   streamlit run app.py
-   ```
+3. Add companies to track using the sidebar interface
 
-2. Access the dashboard at http://localhost:8501
+4. Click "Start Scraping" to begin data collection
 
 ## Project Structure
 
 ```
-ai-job-change-tracker/
-├── .github/
-│   └── workflows/
-│       └── scrape.yml          # GitHub Actions workflow
-├── .streamlit/
-│   └── config.toml            # Streamlit configuration
-├── backend/
-│   └── main.py               # FastAPI backend
-├── .env.example              # Example environment variables
-├── .gitignore               # Git ignore rules
-├── app.py                   # Main Streamlit application
-├── init_db.sql             # Database initialization script
-├── install_dependencies.py  # Dependency installation script
-├── requirements.txt        # Python dependencies
-├── run_scraper.py         # Scraper execution script
-├── scraper.py             # Web scraping module
-└── README.md              # Project documentation
+linkedin-job-tracker/
+├── app.py              # Main Streamlit application
+├── scraper.py          # LinkedIn scraper module
+├── requirements.txt    # Project dependencies
+├── Procfile           # Deployment configuration
+├── runtime.txt        # Python version specification
+├── .env.example       # Example environment variables
+├── .gitignore         # Git ignore rules
+└── README.md          # Project documentation
 ```
-
-## Features in Detail
-
-### Dashboard
-- Real-time job change tracking
-- Interactive visualizations
-- Company and keyword filtering
-- Responsive design
-
-### Scraping
-- Automated data collection
-- Multiple company tracking
-- Duplicate detection
-- Error handling
-
-### Data Analysis
-- Daily trends
-- Company distribution
-- Weekly/monthly statistics
-- Custom filtering
-
-## Deployment
-
-### Local Deployment
-1. Follow the setup instructions above
-2. Run the application using `streamlit run app.py`
-
-### Streamlit Cloud Deployment
-1. Push your code to GitHub
-2. Go to https://share.streamlit.io/
-3. Connect your GitHub repository
-4. Set the main file path to `app.py`
-5. Add your environment variables
-6. Deploy!
 
 ## Contributing
 
@@ -138,8 +84,6 @@ ai-job-change-tracker/
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Acknowledgments
+## Disclaimer
 
-- LinkedIn for providing public profile data
-- Google Search for enabling data discovery
-- The open-source community for the tools and libraries used in this project
+This tool is for educational purposes only. Please respect LinkedIn's terms of service and rate limits when using this application. 

@@ -1,4 +1,4 @@
--- Create database if it doesn't exist
+-- Create the database if it doesn't exist
 CREATE DATABASE job_changes;
 
 -- Connect to the database
@@ -148,4 +148,4 @@ GRANT ALL PRIVILEGES ON DATABASE job_changes TO postgres;
 GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO postgres;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO postgres;
 GRANT ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA public TO postgres;
-GRANT ALL PRIVILEGES ON ALL VIEWS IN SCHEMA public TO postgres;
+GRANT ALL PRIVILEGES ON ALL VIEWS IN SCHEMA public TO postgres; 

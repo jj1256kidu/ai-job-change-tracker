@@ -7,6 +7,9 @@ from pathlib import Path
 import logging
 from typing import List, Dict
 import time
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 # Configure logging
 logging.basicConfig(
@@ -319,4 +322,4 @@ def main():
     logger.info("   - Frontend: streamlit run app.py")
 
 if __name__ == "__main__":
-    main()
+    main() 

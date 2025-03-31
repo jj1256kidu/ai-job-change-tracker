@@ -1,0 +1,73 @@
+[theme]
+# Primary accent color for interactive elements
+primaryColor = "#3B82F6"
+
+# Background color for the main content area
+backgroundColor = "#FFFFFF"
+
+# Background color used for the sidebar and most interactive widgets
+secondaryBackgroundColor = "#F0F2F6"
+
+# Color used for almost all text
+textColor = "#262730"
+
+# Font family for all text in the app, except code blocks
+font = "sans serif"
+
+[server]
+# Maximum size of uploaded file (in MB)
+maxUploadSize = 200
+
+# Enable XSRF protection
+enableXsrfProtection = true
+
+# Enable CORS
+enableCORS = false
+
+# Server address
+serverAddress = "0.0.0.0"
+
+# Server port
+serverPort = 8501
+
+[browser]
+# Whether to gather usage statistics
+gatherUsageStats = false
+
+# Whether to open the browser automatically when running the app
+serverRunOnSave = true
+
+[runner]
+# Whether to run the app in fast rerender mode
+fastRerenderEnabled = true
+
+[client]
+# Whether to show the sidebar by default
+showSidebarNavigation = true
+
+# Whether to show the hamburger menu
+showToolbar = true
+
+[theme.base]
+# Base theme to use
+base = "light"
+
+[theme.primaryColor]
+# Primary color for interactive elements
+primaryColor = "#3B82F6"
+
+[theme.backgroundColor]
+# Background color for the main content area
+backgroundColor = "#FFFFFF"
+
+[theme.secondaryBackgroundColor]
+# Background color used for the sidebar and most interactive widgets
+secondaryBackgroundColor = "#F0F2F6"
+
+[theme.textColor]
+# Color used for almost all text
+textColor = "#262730"
+
+[theme.font]
+# Font family for all text in the app, except code blocks
+font = "sans serif"
